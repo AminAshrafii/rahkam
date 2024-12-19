@@ -557,7 +557,7 @@ primary:
   ## @param primary.podAntiAffinityPreset PostgreSQL primary pod anti-affinity preset. Ignored if `primary.affinity` is set. Allowed values: `soft` or `hard`
   ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
   ##
-  podAntiAffinityPreset: soft
+  podAntiAffinityPreset: hard
   ## PostgreSQL Primary node affinity preset
   ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
   ##
@@ -1011,7 +1011,7 @@ readReplicas:
   ## @param readReplicas.podAntiAffinityPreset PostgreSQL read only pod anti-affinity preset. Ignored if `primary.affinity` is set. Allowed values: `soft` or `hard`
   ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
   ##
-  podAntiAffinityPreset: soft
+  podAntiAffinityPreset: hard
   ## PostgreSQL read only node affinity preset
   ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
   ##
@@ -1292,7 +1292,7 @@ readReplicas:
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
 backup:
   ## @param backup.enabled Enable the logical dump of the database "regularly"
-  enabled: false
+  enabled: true
   cronjob:
     ## @param backup.cronjob.schedule Set the cronjob parameter schedule
     schedule: "@daily"
