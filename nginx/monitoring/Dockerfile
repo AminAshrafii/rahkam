@@ -10,4 +10,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set the entry point command
-ENTRYPOINT ["python", "app.py"]
+ENTRYPOINT ["python", "nginx_metrics.py"]
