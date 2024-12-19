@@ -24,7 +24,7 @@ def parse_metrics(metrics):
 
 if __name__ == "__main__":
     # Replace with your Nginx exporter endpoint
-    metrics_endpoint = "http://<nginx-exporter-service>:9113/metrics"
+    metrics_endpoint = "http://internal-nginx.web-server.svc.cluster.local:9113/metrics"
     
     raw_metrics = fetch_nginx_metrics(metrics_endpoint)
     if raw_metrics:
