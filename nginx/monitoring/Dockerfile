@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /
 COPY requirements.txt ./
 
 # Install dependencies
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install  -r requirements.txt
 
 # Copy application files
 COPY . .
