@@ -42,7 +42,7 @@ def parse_stub_status(metrics):
 
 if __name__ == "__main__":
     # Replace with your Nginx stub_status endpoint
-    metrics_endpoint = "http://internal-nginx.web-server.svc.cluster.local/stub_status"
+    metrics_endpoint = "http://internal-nginx.web-server.svc.cluster.local:8080/stat"
 
     raw_metrics = fetch_stub_status(metrics_endpoint)
     if raw_metrics:
