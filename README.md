@@ -1,17 +1,55 @@
-# rahkam
-about interview
-## 1. Creating Cluster 
+# Rahkam - DevOps Task Documentation
 
-### 1.1. The Linux Hardening 
+## Overview
+
+This document provides a step-by-step guide to completing the assigned DevOps tasks, covering Kubernetes cluster setup, PostgreSQL clustering, NGINX web server deployment, monitoring solutions, and ingress configurations. It ensures a reliable and scalable environment suitable for modern application deployment.
+
+---
+
+## Table of Contents
+
+1. [Cluster Creation](#1-cluster-creation)
+   - [1.1 Linux Hardening](#11-linux-hardening)
+   - [1.2 Kubernetes Cluster with Kind](#12-kubernetes-cluster-with-kind)
+2. [PostgreSQL Setup](#2-postgresql-setup)
+   - [2.1 Configurations](#21-configurations)
+   - [2.2 Cluster Deployment](#22-cluster-deployment)
+   - [2.3 Backup Configuration](#23-backup-configuration)
+3. [NGINX Web Server Deployment](#3-nginx-web-server-deployment)
+   - [3.1 Bitnami Helm Chart Setup](#31-bitnami-helm-chart-setup)
+   - [3.2 Stub Status Configuration](#32-stub-status-configuration)
+   - [3.3 Autoscaling Configuration](#33-autoscaling-configuration)
+4. [Monitoring Setup](#4-monitoring-setup)
+   - [4.1 Prometheus Deployment](#41-prometheus-deployment)
+   - [4.2 Grafana Integration](#42-grafana-integration)
+   - [4.3 NGINX Exporter](#43-nginx-exporter)
+5. [Ingress Configuration](#5-ingress-configuration)
+
+---
+
+## 1. Cluster Creation
+
+### 1.1 Linux Hardening
+
+Run the following commands to optimize the system:
+
+```bash
 sudo sysctl fs.inotify.max_user_watches=524288
 sudo sysctl fs.inotify.max_user_instances=512
+```
 
+### 1.2 Kubernetes Cluster with Kind
 
-### 1.2. Create Cluster with kind 
- kind create cluster --name rahkam --config kind-cluster.yml --retain
- kubectl cluster-info --context kind-rahkam
+Create a multi-node cluster with Kind:
 
-````
+```bash
+kind create cluster --name rahkam --config kind-cluster.yml --retain
+kubectl cluster-info --context kind-rahkam
+```
+
+**Kind Configuration File**:
+
+```yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -21,119 +59,174 @@ nodes:
   - role: worker
   - role: worker
   - role: worker
-````
+```
 
+Verify nodes:
 
+```bash
+kubectl get nodes
+```
 
-=======================================================================
-  kubectl get node -->
-     NAME                    STATUS   ROLES           AGE     VERSION
-rahkam-control-plane    Ready    control-plane   2m49s   v1.27.3
-rahkam-control-plane2   Ready    control-plane   2m18s   v1.27.3
-rahkam-control-plane3   Ready    control-plane   68s     v1.27.3
-rahkam-worker           Ready    <none>          54s     v1.27.3
-rahkam-worker2          Ready    <none>          54s     v1.27.3
-rahkam-worker3          Ready    <none>          54s     v1.27.3
-=======================================================================
-## 2.1. Postgresql Clustering and desired changes 
-NOTE: We are using bitnami helm chart to make our work faster and made changes and thinhgs.
+---
 
-````
-# 1. change the replica count
- replicaCount: 3
- #########
-# 2. change the architucture to replication
- architecture: replication
+## 2. PostgreSQL Setup
 
-````
+### 2.1 Configurations
 
-### 2.1. Create Cluster and intall postgresql
+Update `values.yaml`:
+
+```yaml
+replicaCount: 3
+architecture: replication
+```
+
+### 2.2 Cluster Deployment
+
+Create a namespace and deploy PostgreSQL using the Bitnami Helm chart:
+
+```bash
 kubectl create namespace postgresql
-helm install postgresql-cluster . -n postgresql
+helm install postgresql-cluster bitnami/postgresql -n postgresql
+```
 
+### 2.3 Backup Configuration
 
+Enable daily backups:
 
+```yaml
+backup:
+  enabled: true
+  cronjob:
+    schedule: "@daily"
+    timeZone: ""
+    concurrencyPolicy: Allow
+```
 
+---
+
+## 3. NGINX Web Server Deployment
+
+### 3.1 Bitnami Helm Chart Setup
+
+```bash
 kubectl create namespace web-server
-helm install internal . -n web-server
+helm install internal bitnami/nginx -n web-server
+```
 
+### 3.2 Stub Status Configuration
 
-kubectl create namespace monitoring
-helm install prometheus . -n monitoring
+Update the `serverBlock` section in `values.yaml`:
 
+```nginx
+server {
+  listen 0.0.0.0:8080;
+  location /stat {
+    stub_status on;
+  }
+}
+```
 
+### 3.3 Autoscaling Configuration
 
-=======================================================================
-kubectl get pods -n monitoring
-NAME                                                 READY   STATUS              RESTARTS   AGE
-prometheus-alertmanager-0                            0/1     ContainerCreating   0          5s
-prometheus-kube-state-metrics-6d56575bc9-trhhs       0/1     ContainerCreating   0          5s
-prometheus-prometheus-node-exporter-7b7mf            0/1     Pending             0          5s
-prometheus-prometheus-node-exporter-gcfks            0/1     Pending             0          5s
-prometheus-prometheus-node-exporter-lmr2t            0/1     Pending             0          5s
-prometheus-prometheus-node-exporter-ln2kd            0/1     Pending             0          5s
-prometheus-prometheus-node-exporter-rwb6w            0/1     Pending             0          5s
-prometheus-prometheus-node-exporter-rx289            0/1     Pending             0          5s
-prometheus-prometheus-pushgateway-7c4665864b-mgx6f   0/1     ContainerCreating   0          5s
-prometheus-server-7b496c8d6-jdxd8                    0/2     ContainerCreating   0          5s
-=======================================================================
+Enable autoscaling in `values.yaml`:
 
-
-
-
-
-=======================================================================
-GRAFANA
-helm install grafana . -n monitoring 
-1. Get your 'admin' user password by running:
-
-   kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
-
-
-2. The Grafana server can be accessed via port 80 on the following DNS name from within your cluster:
-
-   grafana.monitoring.svc.cluster.local
-
-   Get the Grafana URL to visit by running these commands in the same shell:
-     export POD_NAME=$(kubectl get pods --namespace monitoring -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=grafana" -o jsonpath="{.items[0].metadata.name}")
-     kubectl --namespace monitoring port-forward $POD_NAME 3000
-
-3. Login with the password from step 1 and the username: admin
-password: eYAJfQKvQrInJxXlCeQtdF46YBYUWHBTDlLLKs38
-=======================================================================
-
-
-
-Nginx monitoring
-
-1- create Dockerfile to make image
-2- push the image in my docker hub
-(its nesseccery for the valus.yaml, cause of kuber just pull image from repository)
-3- create helm chart by command:
-                               helm create nginxexporter
-4- config the values.yaml 
-======================================================================= 
-Nginx
-
-1- helm pull bitnami/nginx ;)
-2- config 
-         replicacount : 2
-         add this in values.yaml
-            serverBlock: |-
-   server {
-     listen 0.0.0.0:8080;
-     location /stat {
-
-                             stub_status on;
-     }
-
-Auto scalling config in values.yaml
+```yaml
 autoscaling:
   enabled: true
-  minReplicas: "2"
-  maxReplicas: "4"
-  targetCPU: "200Mi"
-  targetMemory: ""
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPU: 200m
+  targetMemory: 512Mi
+```
 
+---
 
+## 4. Monitoring Setup
 
+### 4.1 Prometheus Deployment
+
+Deploy Prometheus:
+
+```bash
+kubectl create namespace monitoring
+helm install prometheus prometheus-community/prometheus -n monitoring
+```
+
+### 4.2 Grafana Integration
+
+Install Grafana:
+
+```bash
+helm install grafana grafana/grafana -n monitoring
+```
+
+Retrieve Grafana credentials:
+
+```bash
+kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode
+```
+
+Import dashboards:
+- `K8sCluster.json`
+- `NodeExporter.json`
+- `APIServer.json`
+
+### 4.3 NGINX Exporter
+
+1. Create a Dockerfile for the NGINX exporter.
+2. Push the Docker image to a repository.
+3. Deploy the Helm chart for the NGINX exporter.
+
+---
+
+## 5. Ingress Configuration
+
+Enable ingress in `values.yaml`:
+
+```yaml
+ingress:
+  enabled: true
+  selfSigned: false
+  pathType: ImplementationSpecific
+  apiVersion: ""
+  hostname: nginx.aminiux.ir
+  path: /
+```
+
+---
+
+## File Structure
+
+```
+.
+├── CLUSTER_SETTING
+│   └── kind-cluster.yml
+├── README.md
+├── grafana
+│   ├── dashboards
+│   │   ├── K8sCluster.json
+│   │   ├── NodeExporter.json
+│   │   ├── APIServer.json
+├── nginx
+│   ├── monitoring
+│   │   ├── Dockerfile
+│   │   └── nginx_exporter
+│   │       ├── Chart.yaml
+│   │       └── values.yaml
+├── postgresql
+│   └── postgresql
+│       ├── templates
+│       │   ├── backup
+│       │   │   └── cronjob.yaml
+├── prometheus
+    ├── templates
+    │   ├── prometheusrule.yaml
+```
+
+---
+
+## Notes
+
+1. Ensure all Helm charts and Docker images are accessible.
+2. Follow the provided structure to maintain consistency.
+3. Regularly test backups and autoscaling mechanisms.
